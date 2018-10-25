@@ -1,4 +1,4 @@
-from client import Client
+from soroush_python_sdk import Client
 
 bot_token = "jj5nH1BoZJsbHplz2v8DkiUHZv8o-uCn4c6AHJIxYP-OY_kNt63W0qHl6Wph7HhNzkVGXQ6x4IM9YFcWmMdEtf-uBRvnsZF97w78T" \
             "8GpG0Bv7SVLIv1FwM-uMKCGv2PBMfBb7flzBMvtlCZ1"
