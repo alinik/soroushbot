@@ -2,7 +2,7 @@ import shelve
 import logging
 import admin_commands
 from admin_commands import loader, ADMIN_COMMANDS
-from client import Client
+from soroush_python_sdk import Client
 # from config import bot_token
 import config
 
