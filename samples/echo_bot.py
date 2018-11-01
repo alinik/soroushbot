@@ -1,6 +1,7 @@
-from sys import path
-from client import Client
+from soroush_python_sdk import Client
+
 from config import bot_token
+
 bot = Client(bot_token)
 
 try:

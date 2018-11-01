@@ -1,27 +1,40 @@
-import shelve
 import logging
-import admin_commands
-from admin_commands import loader, ADMIN_COMMANDS
+import shelve
+
 from soroush_python_sdk import Client
-# from config import bot_token
+
+import admin_commands
 import config
+from admin_commands import ADMIN_COMMANDS
+
+from random import shuffle
 
 
-def select_page(bot,user,res):
+def restart_reading(bot, res):
+    l = list(range(1, config.MAX_PAGE))
+    shuffle(l)
+    res['remaining'] = l
+    res['finished'] = res.get('finished', 0) + 1
+    for admin in config.bot_admins:
+        bot.send_text(admin, f'one cycle finished,\n Total:{res["finished"]}. Restarting')
+
+
+def select_page(bot, user, res):
     if 'remaining' not in res:
-        from random import shuffle
-        l = list(range(1, config.MAX_PAGE))
-        shuffle(l)
-        res['remaining'] = l
+        restart_reading(bot, res)
     l = res['remaining']
+    if len(l) == 0:
+        restart_reading(bot, res)
+        l = res['remaining']
     chosen = l.pop()
     res['remaining'] = l
     print(f'Page {chosen} choosed for user {user[:5]}')
-    temp = res.get('pending', [])
-    temp.append(chosen)
-    res['pending'] = temp
-    # return chosen
-    return 543
+    res[f'user:{user}:page_count'] = res.get(f'user:{user}:page_count', 0) + 1
+    # temp = res.get('pending', [])
+    # temp.append(chosen)
+    # res['pending'] = temp
+    return chosen
+    # return 543
 
 
 def bad_command(bot, user, msg, res):
@@ -32,15 +45,38 @@ def bad_command(bot, user, msg, res):
     return [error, success]
 
 
+def user_report(bot, user, res, **kwargs):
+    return bot.send_text(user, "تعداد صفحات خوانده شده: %s" % res[f'user:{user}:page_count'])
+
+
+def user_change_ghari(bot, user, res):
+    settings = res[f'user:{user}:settings']
+    next_ghari = settings['voice'] + 1
+    if next_ghari not in config.VOICE_KEYS:
+        next_ghari = 1
+    settings['voice'] = next_ghari
+    res[f'user:{user}:settings'] = settings
+    return bot.send_text(user, f'قاری به {config.VOICE_KEYS[next_ghari]} تغییر کرد.')
+
+
 def process_text(bot, user, msg, res):
     if msg.startswith('/'):
         cmd = msg[1:].split()[0]
         if cmd in ADMIN_COMMANDS.keys():
             error, success = ADMIN_COMMANDS[cmd](bot, user=user, res=res, msg=msg)
+        else:
+            if cmd == 'ghari':
+                error, success = send_voice(bot, user, res, msg)
 
     elif msg == 'اتفاقی':
-        page = select_page(bot,user=user,res=res)
+        page = select_page(bot, user=user, res=res)
         error, success = send_page(bot, user, page)
+    elif msg == 'گزارشات':
+        error, success = user_report(bot, user, res)
+    elif msg == 'تغییر قاری':
+        error, success = user_change_ghari(bot, user, res)
+    elif msg == 'return':
+        error, success = bot.send_text(user, 'بازگشت به منو اصلی', config.keyb['main'])
     else:
         error, success = bad_command(bot, user, msg, res)
     return error, success
@@ -76,21 +112,41 @@ def get_user_settings(user, res):
     return res[key]
 
 
+def make_ghari_keyb(page):
+    keyb = [
+        [
+            dict(command=f'/ghari 1 {page:03}', text=f'ترتیل استاد {config.VOICE_KEYS[1]}'),
+            dict(command=f'/ghari 2 {page:03}', text=f'ترتیل استاد {config.VOICE_KEYS[2]}'),
+            dict(command=f'/ghari 0 {page:03}', text='ترجمه صوتی صفحه'), ],
+        [
+            {'command': f'/read {page:03}', 'text': 'خواندم'},
+            {'command': 'return', 'text': 'منوی اصلی'}]
+    ]
+    return keyb
+
+
 def send_page(bot, user, page):
     settings = get_user_settings(user=user, res=res)
-    keyb = Client.make_keyboard([[{'command': '/read %s' % page, 'text': 'خواندم'},
-                                  {'command': 'return', 'text': 'منوی اصلی'}]])
-
-    pic = f'res:pages:{page}'
+    # keyb = Client.make_keyboard([[{'command': '/read %s' % page, 'text': 'خواندم'}, {'command': 'return', 'text': 'منوی اصلی'}]])
+    keyb = make_ghari_keyb(page)
+    pic = f'res:pages:{page:03}'
     if pic in res:
         url, size = res[pic]
-        [error, success] = bot.send_image(user, url, "pagr 284", size,keyboard=keyb)
-    voice = f'res:voice:{settings["voice"]}:{page}'
-    if voice in res:
-        url, size = res[voice]
-        [error, success] = bot.send_voice(user, url, "page 284", size, 16600,keyboard=keyb)
-    [error, success] = bot.change_keyboard(user,keyb)
+        [error, success] = bot.send_image(user, url, "", size, keyboard=keyb)
+    [error, success] = bot.change_keyboard(user, keyb)
+
     return error, success
+
+
+def send_voice(bot, user, res, msg, **kwargs):
+    cmd, voice, page = msg.split()
+    # keyb = config.keyb['main']
+    voice = f'res:voice:{voice}:{page}'
+    if voice in res:
+        url, size, duration = res[voice]
+        [error, success] = bot.send_voice(user, url, "", size, duration)
+        # [error, success] = bot.change_keyboard(user, keyb)
+    return [error, success]
 
 
 if __name__ == '__main__':
@@ -98,10 +154,15 @@ if __name__ == '__main__':
         bot = Client(config.bot_token)
         res = shelve.open('medias.dbm')
         print('starting bot...')
-        admin_commands.bot_start_report(bot,res=res)
+        admin_commands.bot_start_report(bot, res=res)
         main(bot, res)
     except Exception as e:
         print(e)
         logging.exception('Bad things happend!')
+        try:
+            for admin in config.bot_admins:
+                bot.send_text(admin, str(e))
+        except Exception:
+            pass
     finally:
         res.close()
