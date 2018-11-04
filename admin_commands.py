@@ -1,4 +1,5 @@
 import os
+import time
 
 import config
 from config import bot_admins
@@ -6,16 +7,19 @@ from config import bot_admins
 
 def start(bot, user, msg, res):
     setup_user(bot, user, res)
-    for admin in bot_admins:
-        bot.send_text(admin, "New User start!")
+    send_to_admin(bot, "New User start_bot!")
     keyb = bot.make_keyboard("اتفاقی|گزارشات|تنظیمات")
     return bot.send_text(user, 'سلام این راهنمای کاربری است', keyb)
 
 
 def stop(bot, user, msg, res):
-    for admin in bot_admins:
-        bot.send_text(admin, "New User start!")
+    send_to_admin(bot, "A User stop!")
     return None
+
+
+def send_to_admin(bot, message):
+    for admin in bot_admins:
+        bot.send_text(admin, message)
 
 
 def loader(bot, **kwargs):
@@ -33,7 +37,7 @@ def loader(bot, **kwargs):
     user = kwargs['user']
     res = kwargs['res']
     topdir = 'res/'
-    total = 0
+    total, failed = 0, 0
     for dirpath, dirnames, files in os.walk(topdir):
         bot.send_text(user, '\n Loading %s Total: %d' % (dirpath, len(files)))
         duraion_file = os.path.join(dirpath, 'duration.txt')
@@ -56,27 +60,32 @@ def loader(bot, **kwargs):
                 size = os.path.getsize(file)
                 print('uploading ', key, size / 1024.0)
                 [error, url] = bot.upload_file(file)
+                if error or not url:
+                    print(f'upload failed for {key}[{error}]')
+                    failed += 1
+                    time.sleep(1)
+                    continue
                 if 'voice' in key:
-                    res[key] = (url, size, duration.get(name, 0))
+                    res[key] = (url, size, duration.get(name, 120_000))
                 else:
                     res[key] = (url, size)
                 total += 1
             print('.', end='')
     res.sync()
-    bot.send_text(user, "Done total %d files loaded." % total)
+    bot.send_text(user, f"Done total {total} files loaded, {failed} failed.")
     return False, True
 
 
 def restart(bot, **kwargs):
-    for user in bot_admins:
-        bot.send_text(user, "Restart requested")
+    send_to_admin(bot,"Restart requested")
 
 
 def bot_start_report(bot, **kwargs):
+    from quran import user_report
+    res = kwargs['res']
     for user in bot_admins:
-        bot.send_text(user, 'Bot started')
-        total = len(kwargs['res'].get('remaining', []))
-        bot.send_text(user, f'Total page remains {total}')
+        user_report(bot, user, res)
+        bot.send_text(user, f'total User: {res.get("users:count",0)}')
 
 
 def read(bot, **kwargs):
@@ -85,6 +94,10 @@ def read(bot, **kwargs):
 
 
 def setup_user(bot, user, res, **kwargs):
+    users = res.get('users:list', [])
+    users.append(user)
+    res['users:list'] = users
+    res['users:count'] = len(users)
     res[f'user:{user}:settings'] = config.default_settings
     res[f'user:{user}:page_count'] = 0
     return
