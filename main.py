@@ -27,7 +27,8 @@ def setup_logging(default_path='logging.yaml', default_level=logging.INFO, env_k
     else:
         logging.basicConfig(level=default_level)
         logging.warning("log config doesn't detected. using defaults")
-
+    logging.getLogger('urllib3').setLevel(logging.CRITICAL)
+    logging.getLogger('sseclient').setLevel(logging.INFO)
 
 def main():
     try:

@@ -4,8 +4,10 @@ from random import shuffle
 import admin_commands
 import config
 from admin_commands import ADMIN_COMMANDS
+from utils import ignore_exception
 
 
+@ignore_exception
 def restart_reading(bot, res):
     all_list = list(range(1, config.MAX_PAGE))
     shuffle(all_list)
@@ -28,6 +30,7 @@ def select_page(bot, user, res):
     return chosen
 
 
+@ignore_exception
 def bad_command(bot, user, msg, res):
     keyb = config.keyb['main']
     [error, success] = bot.send_text(user, "دستور نا مفهوم", keyb)
@@ -37,15 +40,17 @@ def bad_command(bot, user, msg, res):
     return [error, success]
 
 
+@ignore_exception
 def user_report(bot, user, res, **kwargs):
     finished = res['finished']
     remainings = len(res['remaining'])
     report = "تعداد صفحات خوانده شده توسط شما: %s" % res[f'user:{user}:page_count']
     report += f'\n تا کنون بوسیله این بات {finished} بار ختم صورت گرفته است.'
     report += f'\nاز ختم جاری {remainings} صفحه باقی مانده است.'
-    return bot.send_text(user, report)
+    return bot.send_text(user, report,config.keyb['main'])
 
 
+@ignore_exception
 def process_text(bot, user, msg, res):
     if msg.startswith('/'):
         cmd = msg[1:].split()[0]
@@ -57,7 +62,7 @@ def process_text(bot, user, msg, res):
 
     elif msg == 'صفحه جدید':
         page = select_page(bot, user=user, res=res)
-        error, success = send_page(bot, user, page)
+        error, success = send_page(bot, user, page,res)
     elif msg == 'گزارشات':
         error, success = user_report(bot, user, res)
     elif msg == 'return':
@@ -87,24 +92,24 @@ def make_ghari_keyb(page):
     return keyb
 
 
-def send_page(bot, user, page):
+@ignore_exception
+def send_page(bot, user, page,res):
     keyb = make_ghari_keyb(page)
     pic = f'res:pages:{page:03}'
-    if pic in res:
-        url, size = res[pic]
-        [error, success] = bot.send_image(user, url, "", size, keyboard=keyb)
+    url, size = res[pic]
+    [error, success] = bot.send_image(user, url, "", size, keyboard=keyb)
     [error, success] = bot.change_keyboard(user, keyb)
 
     return error, success
 
 
+@ignore_exception
 def send_voice(bot, user, res, msg, **kwargs):
     error, success = False, True
     cmd, voice, page = msg.split()
     voice = f'res:voice:{voice}:{page}'
-    if voice in res:
-        url, size, duration = res[voice]
-        [error, success] = bot.send_voice(user, url, "", size, duration)
+    url, size, duration = res[voice]
+    [error, success] = bot.send_voice(user, url, "", size, duration)
     return [error, success]
 
 
@@ -116,16 +121,16 @@ def start_bot(bot, res):
                 type_ = message['type']
                 msg = message['body'].lower().strip()
                 user = message['from']
-                logging.info(f"New message from {message['from']} \nType: {type_}\nBody: {message['body']}")
+                logging.info(f"New message from {message['from'][:10]} : {type_}:{message['body']}")
                 if type_ in COMMAND_TYPES:
                     [error, success] = COMMAND_TYPES[type_](bot=bot, user=user, msg=msg, res=res)
                 else:
                     [error, success] = bad_command(bot, user, msg, res)
 
                 if success:
-                    logging.info('Message sent successfully')
+                    logging.debug('Message sent successfully')
                 else:
-                    logging.info('Sending message failed: {}'.format(error))
+                    logging.warning('Sending message failed: {}'.format(error))
         except Exception as e:
             if bot:
                 for admin in config.bot_admins:

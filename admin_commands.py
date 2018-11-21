@@ -8,13 +8,24 @@ from config import bot_admins
 def start(bot, user, msg, res):
     setup_user(bot, user, res)
     send_to_admin(bot, "New User start_bot!")
-    keyb = bot.make_keyboard("اتفاقی|گزارشات|تنظیمات")
-    return bot.send_text(user, 'سلام این راهنمای کاربری است', keyb)
+    mesg = """🔸راهنما:
+    با لمس کلید «صفحه جدید»، یک صفحه از قرآن به شما تحویل می شود.
+    ◽با کلیدهای بعدی شما میتوانید قرائت ترتیل با صدای دو قاری و همچنین ترجمه صوتی همان صفحه را هم به راحتی دانلود و استفاده نمائید.
+    ◽لطفاً بعد از قرائت هر صفحه کلید «خواندم» را لمس کنید تا جمع صفحات خوانده شده محاسبه شود.
+    **************
+    🔶 این کار هدیه ای از گروه فرنا می‌باشد. لطفا در کانال ما به آدرس زیر عضو شوید:
+    التماس دعا
+    @quran_farna◽"""
+    return bot.send_text(user, mesg, config.keyb['main'])
 
 
 def stop(bot, user, msg, res):
+    user_list = res.get('user_list', set())
+    if user in user_list:
+        user_list.remove(user)
+        res['user_list'] = user_list
     send_to_admin(bot, "A User stop!")
-    return None
+    return False, True
 
 
 def send_to_admin(bot, message):
@@ -77,7 +88,7 @@ def loader(bot, **kwargs):
 
 
 def restart(bot, **kwargs):
-    send_to_admin(bot,"Restart requested")
+    send_to_admin(bot, "Restart requested")
 
 
 def bot_start_report(bot, **kwargs):
@@ -85,19 +96,18 @@ def bot_start_report(bot, **kwargs):
     res = kwargs['res']
     for user in bot_admins:
         user_report(bot, user, res)
-        bot.send_text(user, f'total User: {res.get("users:count",0)}')
+        bot.send_text(user, f'total User: {len(res.get("users:list", []))}')
 
 
 def read(bot, **kwargs):
     user = kwargs['user']
-    return bot.send_text(user, "متشکرم", keyboard=config.keyb['main'])
+    return bot.send_text(user, "قبول باشه انشاالله", keyboard=config.keyb['main'])
 
 
 def setup_user(bot, user, res, **kwargs):
-    users = res.get('users:list', [])
-    users.append(user)
-    res['users:list'] = users
-    res['users:count'] = len(users)
+    user_list = res.get('users:list', set())
+    user_list.add(user)
+    res['users:list'] = user_list
     res[f'user:{user}:settings'] = config.default_settings
     res[f'user:{user}:page_count'] = 0
     return
