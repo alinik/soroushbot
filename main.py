@@ -30,10 +30,12 @@ def setup_logging(default_path='logging.yaml', default_level=logging.INFO, env_k
     logging.getLogger('urllib3').setLevel(logging.CRITICAL)
     logging.getLogger('sseclient').setLevel(logging.INFO)
 
+
 def main():
+    res = None
     try:
-        bot = Client(config.bot_token)
         res = shelve.open('medias.dbm')
+        bot = Client(config.bot_token)
         logging.info('starting bot...')
         admin_commands.bot_start_report(bot, res=res)
         start_bot(bot, res)
@@ -45,7 +47,8 @@ def main():
         except Exception:
             pass
     finally:
-        res.close()
+        if res:
+            res.close()
 
 
 if __name__ == '__main__':
