@@ -64,6 +64,7 @@ def loader(bot, **kwargs):
                 duration = {i.split(',')[0]: int(i.split(',')[1].strip()) for i in f.readlines() if i.strip()}
 
         print('\n Loading %s Total: %d' % (dirpath, len(files)), end='')
+        delay = 1
         for name in files:
             if config.DEBUG:
                 t = name.split('.')[0]
@@ -79,8 +80,10 @@ def loader(bot, **kwargs):
                 if error or not url:
                     print(f'upload failed for {key}[{error}]')
                     failed += 1
-                    time.sleep(1)
+                    time.sleep(1 + delay)
+                    delay = delay * 2 % 100
                     continue
+                delay = 1
                 if 'voice' in key:
                     res[key] = (url, size, duration.get(name, 120_000))
                 else:
