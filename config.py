@@ -12,7 +12,7 @@ bot_admins = ('NFiDxo8BngUgqnBRPKVqR8jwCqH-38zxDOeDDy_f7bUCOLgHJkJZJJIU75U',)
 keyb = {'main': Client.make_keyboard("صفحه جدید|گزارشات"),
         'admin': Client.make_keyboard("/reload|/restart|/load")}
 
-VOICE_KEYS={1: 'سعد قامدی', 2: 'پرهیزگار'}
+VOICE_KEYS={1: 'سعد الغامدی', 2: 'پرهیزگار'}
 default_settings = {'voice': 1, 'reminder': 60 * 60}
 MAX_PAGE = 604 if not DEBUG else DEBUG_PAGE
 SEJDEH = (528, 597, 480, 416)

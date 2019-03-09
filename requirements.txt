@@ -2,3 +2,4 @@ soroush-python-sdk
 PyYAML
 requests
 sseclient
+sseclient-py

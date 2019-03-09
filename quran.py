@@ -47,10 +47,10 @@ def user_report(bot, user, res, **kwargs):
     report = "تعداد صفحات خوانده شده توسط شما: %s" % res[f'user:{user}:page_count']
     report += f'\n تا کنون بوسیله این بات {finished} بار ختم صورت گرفته است.'
     report += f'\nاز ختم جاری {remainings} صفحه باقی مانده است.'
-    return bot.send_text(user, report,config.keyb['main'])
+    return bot.send_text(user, report, config.keyb['main'])
 
 
-@ignore_exception
+# @ignore_exception
 def process_text(bot, user, msg, res):
     if msg.startswith('/'):
         cmd = msg[1:].split()[0]
@@ -59,10 +59,11 @@ def process_text(bot, user, msg, res):
         else:
             if cmd == 'ghari':
                 error, success = send_voice(bot, user, res, msg)
-
+            elif cmd == 'pages':
+                error, success = send_page(bot, user, res, msg)
     elif msg == 'صفحه جدید':
         page = select_page(bot, user=user, res=res)
-        error, success = send_page(bot, user, page,res)
+        error, success = send_page(bot, user, res, f"/pages 0 {page}")
     elif msg == 'گزارشات':
         error, success = user_report(bot, user, res)
     elif msg == 'return':
@@ -83,8 +84,11 @@ def make_ghari_keyb(page):
     keyb = [
         [
             dict(command=f'/ghari 1 {page:03}', text=f'ترتیل استاد {config.VOICE_KEYS[1]}'),
-            dict(command=f'/ghari 2 {page:03}', text=f'ترتیل استاد {config.VOICE_KEYS[2]}'),
-            dict(command=f'/ghari 0 {page:03}', text='ترجمه صوتی صفحه'), ],
+            dict(command=f'/ghari 2 {page:03}', text=f'ترتیل استاد {config.VOICE_KEYS[2]}'), ], [
+            dict(command=f'/ghari 0 {page:03}', text='ترجمه صوتی صفحه'),
+            dict(command=f'/pages 1 {page:03}', text='نکات')
+        ],
+
         [
             {'command': f'/read {page:03}', 'text': 'خواندم'},
             {'command': 'return', 'text': 'منوی اصلی'}]
@@ -93,13 +97,19 @@ def make_ghari_keyb(page):
 
 
 @ignore_exception
-def send_page(bot, user, page,res):
+def send_page(bot, user, res, msg):
+    cmd, page_type, page = msg.split()
+    page = int(page)
     keyb = make_ghari_keyb(page)
-    pic = f'res:pages:{page:03}'
-    url, size = res[pic]
-    [error, success] = bot.send_image(user, url, "", size, keyboard=keyb)
-    [error, success] = bot.change_keyboard(user, keyb)
-
+    pic = f'res:pages:{page_type}:{page:03}'
+    try:
+        url, size = res[pic]
+        [error, success] = bot.send_image(user, url, "", size, keyboard=keyb)
+        [error, success] = bot.change_keyboard(user, keyb)
+    except KeyError:
+        logging.error(f'Page not found {pic}')
+        bot.send_text(user, 'صفحه یافت نشد.')
+        error, success = True, False
     return error, success
 
 
@@ -140,4 +150,3 @@ def start_bot(bot, res):
 COMMAND_TYPES = {'START': admin_commands.start,
                  'STOP': admin_commands.stop,
                  'TEXT': process_text}
-

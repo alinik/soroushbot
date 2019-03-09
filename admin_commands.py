@@ -40,6 +40,11 @@ def loader(bot, **kwargs):
     voice 1  & translate: http://andishehonline.ir/tag/%D8%AA%D8%B1%D8%AC%D9%85%D9%87-%D8%B5%D9%88%D8%AA%DB%8C-%D9%82%D8%B1%D8%A2%D9%86-%D8%A8%D9%87-%D8%B5%D9%88%D8%B1%D8%AA-%D8%B5%D9%81%D8%AD%D9%87-%D8%A8%D9%87-%D8%B5%D9%81%D8%AD%D9%87/
             mediainfo --output="General;%FileName%.%FileExtension%,%Duration%\r\n" *.mp3 > duration.txt
     voice 2: http://www.quranhefz.ir/download/view-6186.aspx
+
+    pics 2: http://moshaf.org/news/10218
+        agi poppler-utils
+        pdftoppm 0.pdf 0 -l 1 -jpeg
+        mogrify -gravity Center -crop 750x1310+25+20 0-01.jpg
     :param bot:
     :param kwargs:
     :return:
